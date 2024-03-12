@@ -1,0 +1,493 @@
+Program.Sub.ScreenSU.Start
+Gui.Parts..Create
+Gui.Parts..Caption("Part - Note")
+Gui.Parts..Size(12870,13050)
+Gui.Parts..MinX(0)
+Gui.Parts..MinY(0)
+Gui.Parts..Position(0,0)
+Gui.Parts..BackColor(-2147483633)
+Gui.Parts..MousePointer(0)
+Gui.Parts..Event(UnLoad,Parts_UnLoad)
+Gui.Parts.cmdExitParts.Create(Button)
+Gui.Parts.cmdExitParts.Size(855,375)
+Gui.Parts.cmdExitParts.Position(11625,150)
+Gui.Parts.cmdExitParts.Caption("Exit")
+Gui.Parts.cmdExitParts.Event(Click,cmdExitParts_Click)
+Gui.Parts.gsPart.Create(GsGridControl)
+Gui.Parts.gsPart.Size(12405,4425)
+Gui.Parts.gsPart.Position(90,705)
+Gui.Parts.gsPart.Event(KeyPressEnter,gsPartsKeyPressEnter)
+Gui.Parts.gsPart.Event(RowCellClick,gsPart_RowCellClick)
+Gui.Parts.frameNote.Create(Frame)
+Gui.Parts.frameNote.Size(12360,7230)
+Gui.Parts.frameNote.Position(120,5220)
+Gui.Parts.frameNote.Caption("Part - Note")
+Gui.Parts.lblPart.Create(Label,"Part",True,795,255,0,360,315,True,0,"Arial",8,-2147483633,0)
+Gui.Parts.lblPart.Parent("frameNote")
+Gui.Parts.txtPartForNotes.Create(TextBox,"",True,1710,300,0,360,540,False,0,"Arial",8,-2147483643,1)
+Gui.Parts.txtPartForNotes.Event(Change,txtPartForNotes_Change)
+Gui.Parts.txtPartForNotes.Parent("frameNote")
+Gui.Parts.gsNote.Create(GsGridControl)
+Gui.Parts.gsNote.Size(11655,4125)
+Gui.Parts.gsNote.Position(360,945)
+Gui.Parts.gsNote.Parent("frameNote")
+Gui.Parts.gsNote.Event(RowCellClick,gsNote_RowCellClick)
+Gui.Parts.gsNote.Event(CellValueChanged,gsNote_CellValueChanged)
+Gui.Parts.gsNote.Event(KeyPressEnter,gsNote_KeyPressEnterX)
+Gui.Parts.txtNoteDisplay.Create(TextBoxR)
+Gui.Parts.txtNoteDisplay.Size(5460,4125)
+Gui.Parts.txtNoteDisplay.Position(9405,930)
+Gui.Parts.txtNoteDisplay.Parent("frameNote")
+Gui.Parts.txtNoteDisplay.Visible(False)
+Gui.Parts.txtToAdd.Create(TextBoxR)
+Gui.Parts.txtToAdd.Size(11655,1395)
+Gui.Parts.txtToAdd.Position(360,5145)
+Gui.Parts.txtToAdd.Parent("frameNote")
+Gui.Parts.cmdAdd.Create(Button)
+Gui.Parts.cmdAdd.Size(855,375)
+Gui.Parts.cmdAdd.Position(360,6630)
+Gui.Parts.cmdAdd.Caption("Add")
+Gui.Parts.cmdAdd.Event(Click,cmdAdd_Click)
+Gui.Parts.cmdAdd.Parent("frameNote")
+Gui.Parts.chkCritical.Create(CheckBox)
+Gui.Parts.chkCritical.Size(1065,360)
+Gui.Parts.chkCritical.Position(1440,6645)
+Gui.Parts.chkCritical.Caption("Critical")
+Gui.Parts.chkCritical.Parent("frameNote")
+Gui.Parts.lblPart2.Create(Label,"Location",True,795,255,0,2265,315,True,0,"Arial",8,-2147483633,0)
+Gui.Parts.lblPart2.Parent("frameNote")
+Gui.Parts.txtLocation.Create(TextBox,"",True,720,300,0,2265,540,False,0,"Arial",8,-2147483643,1)
+Gui.Parts.txtLocation.Parent("frameNote")
+Gui.NoteLine..Create
+Gui.NoteLine..Size(4770,2715)
+Gui.NoteLine..MinX(0)
+Gui.NoteLine..MinY(0)
+Gui.NoteLine..Position(0,0)
+Gui.NoteLine..BackColor(-2147483633)
+Gui.NoteLine..MousePointer(0)
+Gui.NoteLine..Event(UnLoad,NoteLine_UnLoad)
+Gui.NoteLine.txtNoteLine.Create(TextBoxR)
+Gui.NoteLine.txtNoteLine.Size(4200,1470)
+Gui.NoteLine.txtNoteLine.Position(165,150)
+Gui.NoteLine.cmdExitNoteLine.Create(Button)
+Gui.NoteLine.cmdExitNoteLine.Size(855,375)
+Gui.NoteLine.cmdExitNoteLine.Position(150,1725)
+Gui.NoteLine.cmdExitNoteLine.Caption("Exit")
+Gui.NoteLine.cmdExitNoteLine.Event(Click,cmdExitNoteLine_Click)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+V.Global.iLineNote.Declare(long)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'BN Sept 19, 2017
+'This script handles the Part - Note maintenance for retrieving later in Quote/Order Lines screen
+F.Intrinsic.Control.Try
+
+	V.Local.sSQL.Declare(String)
+	V.Local.sRet.Declare(String)
+	V.Local.sPart.Declare(String)
+	V.Local.sLocation.Declare(String)
+	V.Local.sFilter.Declare(String)
+	
+	'V.Passed.000007 : Part 17
+	'V.Passed.000008 : Rev 3
+	'V.Passed.000009 : Location
+	
+	'Populate Inventory Master
+	F.Intrinsic.Control.If(V.Caller.Hook,=,10120)
+		V.Passed.000068.Set("Notes")
+		
+	F.Intrinsic.Control.Else
+		F.ODBC.Connection!con.OpenCompanyConnection
+		
+		'Bind Parts table	
+		F.Data.DataTable.CreateFromSQL("Parts","con","Select Part, Description, Location, Qty_OnHand, Product_Line,'Select' as 'SelectPart' from Inventory_Mstr where Product_Line = 'FG' and Flag_Inactive <> 'Y'",True)
+		Gui.Parts.gsPart.AddGridviewFromDatatable("GV_Parts","Parts")
+		F.Intrinsic.Control.CallSub(format_gsparts)
+		Gui.Parts.gsPart.MainView("GV_Parts")
+		
+		'Bind Parts for Notes
+		F.Data.DataTable.CreateFromSQL("Notes","con","Select Part, Note, Date_Time, UserID, Critical, 'Remove' as Remove, Location, AutoNum from GCG_4710_Part_Note Order by AutoNum",True)
+		F.Data.DataView.Create("Notes","Notes_DTV", 22,"", "")		
+		Gui.Parts.gsNote.AddGridviewFromDataview("GV_Notes","Notes","Notes_DTV")
+		F.Intrinsic.Control.CallSub(format_gsNotes)
+		Gui.Parts.gsNote.MainView("GV_Notes")		
+				
+		F.Intrinsic.Control.SelectCase(V.Caller.Hook)
+		
+			'Script 1 button in Inventory Master
+			F.Intrinsic.Control.Case(10210)			
+				F.Intrinsic.Control.If(V.Passed.000007.Trim,=,"")
+					Gui.Parts.txtPart.Text("")
+					F.Data.DataView.SetFilter("Notes","Notes_DTV","Part = ''")
+					
+				F.Intrinsic.Control.Else
+					F.Intrinsic.String.GSSPartString(V.Passed.000007,V.Passed.000008,V.Local.sPart)
+					V.Local.sLocation.Set(V.Passed.000009)
+					
+					Gui.Parts.txtPartForNotes.Text(V.Local.sPart)
+					Gui.Parts.txtLocation.Text(V.Local.sLocation)
+			
+					F.Intrinsic.String.Build("Part = '{0}' and Location = '{1}'",V.Local.sPart,V.Local.sLocation,V.Local.sFilter)
+					F.Data.DataView.SetFilter("Notes","Notes_DTV",V.Local.sFilter)
+				F.Intrinsic.Control.EndIf
+				
+				Gui.Parts..Show
+			
+			'Part Load hook in Inventory Master
+			F.Intrinsic.Control.Case(10125)			
+				F.Intrinsic.String.GSSPartString(V.Passed.000007,V.Passed.000008,V.Local.sPart)
+				V.Local.sLocation.Set(V.Passed.000009)
+				
+				F.Intrinsic.String.Build("[Part] = '{0}' AND [Location] = '{1}' AND [Critical] = 1",V.Local.sPart,V.Local.sLocation,V.Local.sFilter)
+				
+				F.Data.DataTable.Select("Notes",V.Local.sFilter,V.Local.sRet)
+				
+				'This indicates that a critical note was found for the part and location
+				F.Intrinsic.Control.If(V.Local.sRet,<>,"***NORETURN***")
+					Gui.Parts.txtPartForNotes.Text(V.Local.sPart)
+					Gui.Parts.txtLocation.Text(V.Local.sLocation)
+					
+					F.Intrinsic.String.Build("Part = '{0}' and Location = '{1}'",V.Local.sPart,V.Local.sLocation,V.Local.sFilter)
+					F.Data.DataView.SetFilter("Notes","Notes_DTV",V.Local.sFilter)
+					
+					Gui.Parts..Show
+				F.Intrinsic.Control.EndIf
+				
+			'Run from Custom Menu Item
+			F.Intrinsic.Control.CaseElse
+				Gui.Parts.txtPart.Text("")
+				F.Data.DataView.SetFilter("Notes","Notes_DTV","Part = ''")
+				Gui.Parts..Show
+				
+		F.Intrinsic.Control.EndSelect
+		
+	F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.cmdExitParts_Click.Start
+F.Intrinsic.Control.Try
+	F.Intrinsic.Control.CallSub(parts_unload)
+	
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.cmdExitParts_Click.End
+
+Program.Sub.Parts_UnLoad.Start
+F.Intrinsic.Control.Try
+	F.ODBC.Connection!con.Close
+	F.Intrinsic.Control.End
+	
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.Parts_UnLoad.End
+
+Program.Sub.Format_gsParts.Start
+F.Intrinsic.Control.Try
+	V.Local.sInvisible.Declare(String)
+	V.Local.sTabStop.Declare(String)
+	V.Local.iCnt.Declare(Long)
+	
+	'Set Anchor
+	Gui.Parts.gsPart.Anchor(15)
+	Gui.Parts.chkAllParts.Anchor(6)
+	Gui.Parts.lbl1.Anchor(6)
+	Gui.Parts.cmdExitParts.Anchor(10)
+	
+	Gui.Parts.gsPart.SetGridViewProperty("GV_Parts","AllowSort",True)
+	Gui.Parts.gsPart.SetGridViewProperty("GV_Parts","AllowFilter",True)	
+	Gui.Parts.gsPart.SetGridViewProperty("GV_Parts","EnableAppearanceOddRow",True)
+	Gui.Parts.gsPart.SetGridViewProperty("GV_Parts","OptionsViewRowAutoHeight",True)
+	Gui.Parts.gsPart.SetGridViewProperty("GV_Parts","OptionsViewShowAutoFilterRow",True)
+	Gui.Parts.gsPart.SetGridViewProperty("GV_Parts","OptionsFindAlwaysVisible",True)
+	
+	'For Select
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","SelectPart","AllowEdit",false)
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","SelectPart","ReadOnly",True)
+	
+	'Width
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","Part","MaxWidth","200")
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","Description","MinWidth","200")
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","Qty_OnHand","MinWidth","70")
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","Location","MaxWidth","70")
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","SelectPart","MaxWidth","70")
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","Product_Line","MaxWidth","30")
+	'Caption
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","Qty_OnHand","Caption","On Hand")
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","Product_Line","Caption","PL")
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","SelectPart","Caption","Select")
+	
+	'HeaderHAlignment
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","Qty_Onhand","HeaderHAlignment","Far")
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","SelectPart","HeaderHAlignment","Center")
+	
+	'Cell HAlignment
+	Gui.Parts.gsPart.SetColumnProperty("GV_Parts","SelectPart","CellHAlignment","Center")
+	
+	'TapStop on other columns
+	F.Intrinsic.String.Split("Description,Location,Qty_OnHand,Product_Line",",",V.Local.sTabStop)
+	F.Intrinsic.Control.For(V.Local.iCnt,0,V.Local.sTabStop.UBound,1)
+		Gui.Parts.gsPart.SetColumnProperty("GV_Parts",V.Local.sTabStop(V.Local.iCnt),"TabStop","False")
+	F.Intrinsic.Control.Next(V.Local.iCnt)
+	
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.Format_gsParts.End
+
+Program.Sub.gsPartsKeyPressEnter.Start
+F.Intrinsic.Control.Try	
+	Gui.Parts.txtLocation.Text(V.DataTable.Parts(V.Args.RowIndex).Location!FieldValString)
+	Gui.Parts.txtPartForNotes.Text(V.DataTable.Parts(V.Args.RowIndex).Part!FieldValString)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.gsPartsKeyPressEnter.End
+
+Program.Sub.gsPart_RowCellClick.Start
+F.Intrinsic.Control.Try
+	Gui.Parts.txtLocation.Text(V.DataTable.Parts(V.Args.RowIndex).Location!FieldValString)
+	Gui.Parts.txtPartForNotes.Text(V.DataTable.Parts(V.Args.RowIndex).Part!FieldValString)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.gsPart_RowCellClick.End
+
+Program.Sub.txtPartForNotes_Change.Start
+F.Intrinsic.Control.Try
+	V.Local.sFilter.Declare(String)
+	
+	F.Intrinsic.String.Build("Part = '{0}' and Location = '{1}'",V.Screen.Parts!txtPartForNotes.Text,V.Screen.Parts!txtLocation.Text,V.Local.sFilter)
+	F.Data.DataView.SetFilter("Notes","Notes_DTV",V.Local.sFilter)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.txtPartForNotes_Change.End
+
+Program.Sub.gsNote_CellValueChanged.Start
+F.Intrinsic.Control.Try
+	V.Local.sSQL.Declare(String)
+	V.Local.sDate.Declare(String)
+	V.Local.sTime.Declare(String)
+	V.Local.sDateTime.Declare(String)
+	V.Local.iBit.Declare(Long)
+	
+	F.Intrinsic.String.Format(V.Ambient.Date,"MM-DD-YYYY",V.Local.sDate)
+	F.Intrinsic.String.Format(V.Ambient.Now,"HH:Nn:Ss",V.Local.sTime)
+	F.Intrinsic.String.Concat(V.Local.sDate," ",V.Local.sTime,V.Local.sDateTime)
+	
+	F.Intrinsic.Control.If(V.Args.Column,=,"Note")
+		F.Intrinsic.String.Build("Update GCG_4710_Part_Note set Note = '{0}', Date_Time = '{1}', UserID = '{2}' where AutoNum = {3}",V.DataTable.Notes(V.Args.RowIndex).Note!FieldValString,V.Local.sDateTime,V.Caller.User,V.DataTable.Notes(V.Args.RowIndex).AutoNum!FieldValLong,V.Local.sSQL)
+		F.ODBC.Connection!con.Execute(V.Local.sSQL)
+		
+		F.Data.DataTable.SetValue("Notes",V.Args.RowIndex,"Date_Time",V.Local.sDateTime,"UserID",V.Caller.User)
+	F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.gsNote_CellValueChanged.End
+
+Program.Sub.gsNote_RowCellClick.Start
+F.Intrinsic.Control.Try	
+	V.Local.sSQL.Declare(String)
+	V.Local.sHold.Declare(String)
+	V.Local.sDate.Declare(String)
+	V.Local.sTime.Declare(String)
+	V.Local.sDateTime.Declare(String)
+	V.Local.iFlag.Declare(Long)
+	V.Local.iBit.Declare(Long)	
+	
+	F.Intrinsic.String.Format(V.Ambient.Date,"MM-DD-YYYY",V.Local.sDate)
+	F.Intrinsic.String.Format(V.Ambient.Now,"HH:Nn:Ss",V.Local.sTime)
+	F.Intrinsic.String.Concat(V.Local.sDate," ",V.Local.sTime,V.Local.sDateTime)
+	
+	F.Intrinsic.Control.If(V.Args.Column,=,"Remove")
+		F.Intrinsic.String.Concat("Do you want to delete this Note '",V.DataTable.Notes(V.Args.RowIndex).Note!FieldValString,"' of Part '",V.Screen.Parts!txtPartForNotes.Text,"' ?",V.Local.sHold)
+		Function.Intrinsic.UI.MsgBox (V.Local.sHold, "Delete confirmation",3,V.Local.iFlag)
+		
+		F.Intrinsic.Control.If(V.Local.iFlag,=,6)	
+		
+			F.Intrinsic.String.Build("Delete from GCG_4710_Part_Note where AutoNum = {0}",V.DataTable.Notes(V.Args.RowIndex).AutoNum!FieldValLong,V.Local.sSQL)
+			F.ODBC.Connection!con.Execute(V.Local.sSQL)	
+			F.Data.DataTable.DeleteRow("Notes",V.Args.RowIndex)		
+			
+		F.Intrinsic.Control.EndIf
+		
+	F.Intrinsic.Control.EndIf
+		
+	F.Intrinsic.Control.If(V.Args.Column,=,"Critical")
+		F.Intrinsic.Control.IIF(V.DataTable.Notes(V.Args.RowIndex).Critical!FieldValString,=,"True",1,0,V.Local.iBit)
+		
+		F.Intrinsic.String.Build("Update GCG_4710_Part_Note set Critical = '{0}', Date_Time = '{1}', UserID = '{2}' where AutoNum = {3}",V.Local.iBit,V.Local.sDateTime,V.Caller.User,V.DataTable.Notes(V.Args.RowIndex).AutoNum!FieldValLong,V.Local.sSQL)
+		F.ODBC.Connection!con.Execute(V.Local.sSQL)
+		
+		F.Data.DataTable.SetValue("Notes",V.Args.RowIndex,"Critical",V.Local.iBit,"Date_Time",V.Local.sDateTime,"UserID",V.Caller.User)
+	F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.gsNote_RowCellClick.End
+
+Program.Sub.gsNote_KeyPressEnter.Start
+F.Intrinsic.Control.Try
+	'Display Note
+	Gui.Parts.txtNoteDisplay.Text(V.DataTable.Notes(V.Args.RowIndex).Note!FieldValString)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.gsNote_KeyPressEnter.End
+
+Program.Sub.cmdAdd_Click.Start
+F.Intrinsic.Control.Try
+	V.Local.sSQL.Declare(String)
+	V.Local.sDate.Declare(String)
+	V.Local.sTime.Declare(String)
+	V.Local.sDateTime.Declare(String)
+	
+	F.Intrinsic.Control.If(V.Screen.Parts!txtPartForNotes.Text.Trim,<>,"")
+	
+		F.Intrinsic.Control.If(V.Screen.Parts!txtToAdd.Text.Trim,=,"")
+			F.Intrinsic.UI.Msgbox("Please input text")			
+		F.Intrinsic.Control.Else
+		
+			F.Intrinsic.String.Format(V.Ambient.Date,"MM-DD-YYYY",V.Local.sDate)
+			F.Intrinsic.String.Format(V.Ambient.Now,"HH:Nn:Ss",V.Local.sTime)
+			F.Intrinsic.String.Concat(V.Local.sDate," ",V.Local.sTime,V.Local.sDateTime)
+			
+			F.Intrinsic.String.Build("Insert into GCG_4710_Part_Note (Part,Note,Date_Time,Critical,Location,UserID) values('{0}','{1}','{2}',{3},'{4}','{5}')",V.Screen.Parts!txtPartForNotes.Text,V.Screen.Parts!txtToAdd.Text,V.Local.sDateTime,V.Screen.Parts!chkCritical.Value,V.Screen.Parts!txtLocation.Text,V.Caller.User,V.Local.sSQL)
+			F.ODBC.Connection!con.Execute(V.Local.sSQL)
+			F.Data.DataTable.AddRow("Notes","Part",V.Screen.Parts!txtPartForNotes.Text,"Note",V.Screen.Parts!txtToAdd.Text,"Date_Time",V.Local.sDateTime,"Critical",V.Screen.Parts!chkCritical.Value,"Location",V.Screen.Parts!txtLocation.Text,"UserID",V.Caller.User,"Remove","Remove")
+		
+		F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.Else
+		F.Intrinsic.UI.Msgbox("Please select a Part")
+	F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.cmdAdd_Click.End
+
+Program.Sub.format_gsNotes.Start
+F.Intrinsic.Control.Try
+	'Option
+	Gui.Parts.gsNote.SetGridViewProperty("GV_Notes","AllowSort",True)
+	Gui.Parts.gsNote.SetGridViewProperty("GV_Notes","AllowFilter",True)	
+	Gui.Parts.gsNote.SetGridViewProperty("GV_Notes","OptionsViewRowAutoHeight",True)
+	
+	'For clicking Remove on each Row and Critical click
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Remove","AllowEdit",false)
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Remove","ReadOnly",True)
+	
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Critical","AllowEdit",false)
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Critical","ReadOnly",True)
+	
+	'AllowEdit on some columns and HeaderBackColor
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Note","AllowEdit",True)
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Note","ReadOnly",False)
+	
+	
+	'Invisible
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Part","Visible","False")
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","AutoNum","Visible","False")
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Location","Visible","False")
+	
+	'Width
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Remove","MaxWidth","60")
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Critical","MaxWidth","50")
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Date_Time","MaxWidth","120")
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","UserID","MaxWidth","50")
+	
+	'Caption
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Date_Time","Caption","Date_Time")
+	
+	'HeaderHAlignment Center
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Critical","HeaderHAlignment","Center")
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Remove","HeaderHAlignment","Center")
+	
+	'TapStop
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Date_Time","TabStop","False")
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Critical","TabStop","False")
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Remove","TabStop","False")
+	
+	'Cell HAlignment
+	Gui.Parts.gsNote.SetColumnProperty("GV_Notes","Remove","CellHAlignment","Center")
+	
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.format_gsNotes.End
+
+Program.Sub.gsNote_KeyPressEnterX.Start
+F.Intrinsic.Control.Try
+	V.Global.iLineNote.Set(V.Args.RowIndex)
+	
+	Gui.NoteLine.txtNoteLine.Text(V.DataTable.Notes(V.Args.RowIndex).Note!FieldValString)
+	Gui.NoteLine..Show
+	
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.gsNote_KeyPressEnterX.End
+
+Program.Sub.NoteLine_UnLoad.Start
+F.Intrinsic.Control.Try
+	Gui.NoteLine..Visible(False)
+	
+	F.Data.DataTable.SetValue("Notes",V.Global.iLineNote,"Note",V.Screen.NoteLine!txtNoteLine.Text)
+	
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.NoteLine_UnLoad.End
+
+Program.Sub.cmdExitNoteLine_Click.Start
+F.Intrinsic.Control.Try
+	Gui.NoteLine..Visible(False)
+	
+	F.Data.DataTable.SetValue("Notes",V.Global.iLineNote,"Note",V.Screen.NoteLine!txtNoteLine.Text)
+	
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(CatchError, "Sub", V.Ambient.CurrentSubroutine, "Error", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription)
+F.Intrinsic.Control.EndTry
+Program.Sub.cmdExitNoteLine_Click.End
+
+Program.Sub.CatchError.Start
+F.Intrinsic.Control.Try
+	V.Local.sErrorMessage.Declare(String)
+	V.Local.bCalledFromUnload.Declare(Boolean)
+	
+	F.Intrinsic.String.Build("Program: GCG_4710_Part_Note.g2u{0}{0}Sub: {1}{0}Error: {2}{0}Error Description: {3}",V.Ambient.NewLine,V.Args.Sub,V.Args.Error,V.Args.ErrorDescription,V.Local.sErrorMessage)
+	F.Intrinsic.UI.Msgbox(V.Local.sErrorMessage,"Unhandled Error Occurred")
+	
+	F.Intrinsic.String.IsInString(V.Args.Sub.LCase,"unload",False,V.Local.bCalledFromUnload)
+	
+	F.Intrinsic.Control.If(V.Local.bCalledFromUnload)
+		F.Intrinsic.Control.End
+	F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.Catch
+	F.Intrinsic.UI.Msgbox("Fatal Error occurred in program GCG_4710_Part_Note.g2u","Unhandled Error Occurred")
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry	
+Program.Sub.CatchError.End
+
+Program.Sub.Comments.Start
+${$0$}$$}$$}$9/22/2017 7:59:05 AM$}$False
+${$3$}$0$}$$}$0$}$-1$}$$}$12:00:00 AM$}$This will be a custom GAB script that will run from a custom Menu Item under Bill of Material -> File -> Custom Cobalt BOM Import.  The user will navigate to the xml file that needs to be loaded into Global Shop.  Once the xml is parsed there will be a search in Global Shop to see if a BOM already exists for that Part Number.  If one already exists a compare screen will display showing the differences between the two.  If one does not exist then the screen will display the BOM as it will be uploaded into Global Shop.  Any parts that are listed in the BOM that are not Inventory Parts will be highlighted in Yellow.  If there are any parts not in inventory the user will have the option to click the create Parts button to generate those parts in Global Shop.  If the BOM exists in Global shop then any differences on the new import will be highlighted in Red.  After the Parts have been created then the Upload button will upload and override any previous BOM for that part.}$12:00:00 AM
+Program.Sub.Comments.End
